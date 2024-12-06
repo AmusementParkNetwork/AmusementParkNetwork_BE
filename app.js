@@ -84,7 +84,7 @@ io.on("connection", (socket) => {
       waitingNumbers[Number(roomNumber)]++;
       // 대기시간 1명당 5분 증가
       let estimatedWaitTime = waitingNumbers[Number(roomNumber)] * waitingTimePerPerson;
-      let message = `${roomNumber}번 구역 현재 대기 인원 ${waitingNumbers[Number(roomNumber)]}명입니다.\n
+      let message = `${roomNumber}번 구역 현재 대기 인원 ${waitingNumbers[Number(roomNumber)]}명\n
                       예상 대기시간: ${estimatedWaitTime}분`;
       // 메시지 전송
       io.to("1").emit("chat", message);
