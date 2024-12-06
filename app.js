@@ -33,7 +33,7 @@ let waitingNumbers = {
   2: 0,
   3: 0,
 };  // 방별 대기인원 수
-const waitingTimePerPerson = 5;  // 대기시간 1명당 5분 증가
+const waitingTimePerPerson = 2;  // 대기시간 1명당 5분 증가
 
 io.on("connection", (socket) => {
   // 유저 입장
