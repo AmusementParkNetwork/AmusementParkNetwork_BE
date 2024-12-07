@@ -29,10 +29,17 @@ const rooms = {
 
 let socketID = [];
 let userID = [];
+
 let crowdedDegree = {
   2: 0,
   3: 0
 }; // 각 방마다의 혼잡도 저장
+
+let waitingNumbers = {
+  2: 0,
+  3: 0,
+};  // 방별 대기인원 수
+const waitingTimePerPerson = 2;  // 대기시간 1명당 5분 증가
 
 io.on("connection", (socket) => {
   // 유저 입장
@@ -84,5 +91,21 @@ io.on("connection", (socket) => {
     // 각 구역 방과 1번방에 메세지 전송
     io.to(roomNumber).emit("chat", message);
     io.to("1").emit("chat", message);
+
+  // 대기인원 관리
+  socket.on("waiting", (userName, roomNumber) => {
+    if (waitingNumbers[Number(roomNumber)] !== undefined) {
+      // 방별 대기인원 수 증가
+      waitingNumbers[Number(roomNumber)]++;
+      // 대기시간 1명당 5분 증가
+      let estimatedWaitTime = waitingNumbers[Number(roomNumber)] * waitingTimePerPerson;
+      let message = `${roomNumber}번 구역 현재 대기 인원 ${waitingNumbers[Number(roomNumber)]}명\n
+                      예상 대기시간: ${estimatedWaitTime}분`;
+      // 메시지 전송
+      io.to("1").emit("chat", message);
+      io.to(roomNumber).emit("chat", message);
+    } else {
+      console.error(`잘못된 구역 번호: ${roomNumber}`);
+    }
   });
 });
