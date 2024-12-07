@@ -29,6 +29,12 @@ const rooms = {
 
 let socketID = [];
 let userID = [];
+
+let crowdedDegree = {
+  2: 0,
+  3: 0
+}; // 각 방마다의 혼잡도 저장
+
 let waitingNumbers = {
   2: 0,
   3: 0,
@@ -76,6 +82,15 @@ io.on("connection", (socket) => {
       io.to(roomNumber).emit("chat", message);
     }
   });
+
+  // 혼잡도 조정
+  socket.on("crowded", (userName, roomNumber) => {
+    // 혼잡도 증가
+    crowdedDegree[Number(roomNumber)]++;
+    message = `${roomNumber} 구역 현재 혼잡도 ${crowdedDegree[roomNumber]}입니다.`
+    // 각 구역 방과 1번방에 메세지 전송
+    io.to(roomNumber).emit("chat", message);
+    io.to("1").emit("chat", message);
 
   // 대기인원 관리
   socket.on("waiting", (userName, roomNumber) => {
