@@ -16,7 +16,8 @@ const server = app.listen(9000, () => {
 
 const io = socketIo(server, {
   cors: {
-    origin: "https://flrou.site", // TODO: 클라이언트 주소로 변경
+    // origin: "https://flrou.site",
+    origin: "http://localhost:3000",
     credentials: true,
     methods: ["GET", "POST"],
   },
@@ -27,9 +28,6 @@ const rooms = {
   2: [], // 영역1 유저 배열
   3: [], // 영역2 유저 배열
 };
-
-let socketID = [];
-let userID = [];
 
 let crowdedDegree = {
   2: 0,
@@ -45,6 +43,7 @@ const waitingTimePerPerson = 5; // 대기시간 1명당 5분 증가
 io.on("connection", (socket) => {
   // 유저 입장
   socket.on("join", (userName, roomNumber) => {
+    console.log("join", "name:", userName, "room:", roomNumber);
     socket.join(roomNumber);
 
     rooms[roomNumber].push({
@@ -59,15 +58,42 @@ io.on("connection", (socket) => {
     });
   });
 
+  // 유저 퇴장
+  socket.on("leave", (userName, roomNumber) => {
+    console.log("leave", "name:", userName, "room:", roomNumber);
+
+    if (rooms[roomNumber]) {
+      const leavingUser = rooms[roomNumber].find(
+        (user) => user.id === socket.id
+      );
+      console.log("leaving user:", leavingUser);
+
+      rooms[roomNumber] = rooms[roomNumber].filter(
+        (user) => user.id !== socket.id
+      );
+      console.log("remaining users:", rooms[roomNumber]);
+
+      io.to(roomNumber).emit("userLeft", {
+        username: leavingUser ? leavingUser.username : null,
+        users: rooms[roomNumber],
+      });
+    }
+  });
+
   // 유저 연결 해제
   socket.on("disconnect", () => {
     for (let roomNumber in rooms) {
+      // 퇴장하는 유저 찾기
+      const leavingUser = rooms[roomNumber].find(
+        (user) => user.id === socket.id
+      );
+
       rooms[roomNumber] = rooms[roomNumber].filter(
         (user) => user.id !== socket.id
       );
 
-      // 남은 유저들에게 퇴장 알림
       io.to(roomNumber).emit("userLeft", {
+        username: leavingUser ? leavingUser.username : null,
         users: rooms[roomNumber],
       });
     }
@@ -75,7 +101,7 @@ io.on("connection", (socket) => {
 
   // 채팅
   socket.on("chat", (message, roomNumber) => {
-    if (roomNumber === "1") {
+    if (roomNumber === 1) {
       // 1번방은 전체 방에 메시지 전송
       io.emit("chat", message);
     } else {
@@ -84,30 +110,42 @@ io.on("connection", (socket) => {
     }
   });
 
-  // 혼잡도 조정
-  socket.on("crowded", (userName, roomNumber) => {
-    // 혼잡도 증가
-    crowdedDegree[Number(roomNumber)]++;
-    let message = `${roomNumber} 구역 현재 혼잡도 ${crowdedDegree[roomNumber]}입니다.`;
+  // 혼잡도 증가
+  socket.on("crowded", (roomNumber) => {
+    crowdedDegree[roomNumber]++;
+
+    const crowdedData = {
+      degree: crowdedDegree[roomNumber],
+      percentage: Math.min(crowdedDegree[roomNumber] * 10, 100),
+    };
+    console.log(roomNumber, crowdedData);
+
     // 각 구역 방과 1번방에 메세지 전송
-    io.to(roomNumber).emit("chat", message);
-    io.to("1").emit("chat", message);
+    io.to(roomNumber).emit("crowdedNum", crowdedData);
+    io.to(1).emit("crowdedNum", crowdedData);
   });
 
-  // 대기인원 관리
-  socket.on("waiting", (userName, roomNumber) => {
+  // 대기인원 증가
+  socket.on("waiting", (roomNumber) => {
     if (waitingNumbers[Number(roomNumber)] !== undefined) {
       // 방별 대기인원 수 증가
       waitingNumbers[Number(roomNumber)]++;
       // 대기시간 1명당 5분 증가
-      let estimatedWaitTime =
-        waitingNumbers[Number(roomNumber)] * waitingTimePerPerson;
-      let message = `${roomNumber}번 구역 현재 대기 인원 ${
-        waitingNumbers[Number(roomNumber)]
-      }명\n예상 대기시간: ${estimatedWaitTime}분`;
+
+      // let estimatedWaitTime =
+      //   waitingNumbers[Number(roomNumber)] * waitingTimePerPerson;
+      // let message = `${roomNumber}번 구역 현재 대기 인원 ${
+      //   waitingNumbers[Number(roomNumber)]
+      // }명\n예상 대기시간: ${estimatedWaitTime}분`;
+      const waitingData = {
+        number: waitingNumbers[roomNumber],
+        time: waitingNumbers[roomNumber] * waitingTimePerPerson,
+      };
+      console.log(roomNumber, waitingData);
+
       // 메시지 전송
-      io.to("1").emit("chat", message);
-      io.to(roomNumber).emit("chat", message);
+      io.to(roomNumber).emit("waitingNum", waitingData);
+      io.to(1).emit("waitingNum", waitingData);
     } else {
       console.error(`잘못된 구역 번호: ${roomNumber}`);
     }
