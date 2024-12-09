@@ -16,8 +16,8 @@ const server = app.listen(9000, () => {
 
 const io = socketIo(server, {
   cors: {
-    // origin: "https://flrou.site",
-    origin: "http://localhost:3000",
+    origin: "http://flrou.site",
+    // origin: "http://localhost:3000",
     credentials: true,
     methods: ["GET", "POST"],
   },
@@ -120,7 +120,6 @@ io.on("connection", (socket) => {
     };
     console.log(roomNumber, crowdedData);
 
-    // 각 구역 방과 1번방에 메세지 전송
     io.to(roomNumber).emit("crowdedNum", crowdedData);
     io.to(1).emit("crowdedNum", crowdedData);
   });
@@ -130,20 +129,13 @@ io.on("connection", (socket) => {
     if (waitingNumbers[Number(roomNumber)] !== undefined) {
       // 방별 대기인원 수 증가
       waitingNumbers[Number(roomNumber)]++;
-      // 대기시간 1명당 5분 증가
 
-      // let estimatedWaitTime =
-      //   waitingNumbers[Number(roomNumber)] * waitingTimePerPerson;
-      // let message = `${roomNumber}번 구역 현재 대기 인원 ${
-      //   waitingNumbers[Number(roomNumber)]
-      // }명\n예상 대기시간: ${estimatedWaitTime}분`;
       const waitingData = {
         number: waitingNumbers[roomNumber],
         time: waitingNumbers[roomNumber] * waitingTimePerPerson,
       };
       console.log(roomNumber, waitingData);
 
-      // 메시지 전송
       io.to(roomNumber).emit("waitingNum", waitingData);
       io.to(1).emit("waitingNum", waitingData);
     } else {
